@@ -1,0 +1,5 @@
+{
+  "name": "Consumables EZ (소모품 간편 신청)",
+  "description": "A web application for employees to request consumable items, replacing manual tracking. It standardizes item names, logs requests, and calculates costs automatically. Built in Korean.",
+  "requestFramePermissions": []
+}
