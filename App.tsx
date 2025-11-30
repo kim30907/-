@@ -86,9 +86,11 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (!localStorage.getItem('adminPassword')) {
-      localStorage.setItem('adminPassword', '0000');
-    }
+    // 비밀번호 문제 해결을 위한 강제 초기화 로직
+    // 브라우저에 예전 비밀번호가 남아있을 수 있으므로, 실행 시 '0000'으로 강제 설정합니다.
+    localStorage.setItem('adminPassword', '0000');
+    setAdminPassword('0000');
+    
     fetchData();
   }, [fetchData]);
 

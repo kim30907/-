@@ -45,14 +45,18 @@ const PasswordModal: React.FC<PasswordModalProps> = ({ isOpen, onClose, onSubmit
           계속하려면 관리자 비밀번호를 입력하세요.
         </p>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full p-3 border border-slate-300 rounded-lg text-center focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-            placeholder="비밀번호 입력"
-            autoFocus
-          />
+          <div>
+            <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full p-3 border border-slate-300 rounded-lg text-center focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                placeholder="비밀번호 입력"
+                autoFocus
+            />
+            <p className="text-xs text-slate-400 mt-2">(초기 비밀번호: 0000)</p>
+          </div>
+          
           {error && <p className="text-red-500 text-sm">{error}</p>}
           <button
             type="submit"
