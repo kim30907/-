@@ -34,12 +34,12 @@ const LineManager: React.FC<LineManagerProps> = ({ lines, onAddLine, onDeleteLin
   };
 
   return (
-    <div className="bg-white p-6 md:p-8 rounded-xl shadow-lg border border-slate-200">
-      <div className="flex items-center gap-3 mb-6">
+    <div className="bg-white p-5 rounded-xl shadow-lg border border-slate-200">
+      <div className="flex items-center gap-3 mb-4">
         <UsersIcon />
         <h2 className="text-xl font-bold text-slate-700">라인 관리</h2>
       </div>
-      <div className="space-y-4">
+      <div className="space-y-3">
         <div>
           <label htmlFor="new-line" className="block text-sm font-medium text-slate-600 mb-1">새 라인 추가</label>
           <div className="flex gap-2">
