@@ -19,11 +19,11 @@ const TrendAnalysis: React.FC<TrendAnalysisProps> = ({ logs }) => {
       };
     }
 
-    const totalCost = logs.reduce((sum, log) => sum + log.totalCost, 0);
+    const totalCost = logs.reduce((sum, log) => sum + log.total_cost, 0);
 
     const lineSpendingMap = new Map<string, number>();
     logs.forEach(log => {
-      lineSpendingMap.set(log.line, (lineSpendingMap.get(log.line) || 0) + log.totalCost);
+      lineSpendingMap.set(log.line, (lineSpendingMap.get(log.line) || 0) + log.total_cost);
     });
     const lineSpending = Array.from(lineSpendingMap.entries())
       .map(([name, cost]) => ({ name, cost }))
@@ -34,7 +34,7 @@ const TrendAnalysis: React.FC<TrendAnalysisProps> = ({ logs }) => {
       const date = new Date(log.timestamp);
       const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
       const current = monthlyData.get(monthKey) || { cost: 0, count: 0 };
-      current.cost += log.totalCost;
+      current.cost += log.total_cost;
       current.count += 1;
       monthlyData.set(monthKey, current);
     });

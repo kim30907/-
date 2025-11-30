@@ -1,8 +1,10 @@
+
 import React, { useState, useMemo, useCallback } from 'react';
 import type { RequestLog, ConsumableItem } from '../types';
 import TrendAnalysis from './TrendAnalysis';
 import AddItemForm from './AddItemForm';
 import LineManager from './LineManager';
+import EquipmentCodeManager from './EquipmentCodeManager';
 import PasswordManager from './PasswordManager';
 import MasterDataManager from './MasterDataManager';
 import { ClipboardListIcon, TrendingUpIcon, SettingsIcon, DownloadIcon, ChevronLeftIcon, ChevronRightIcon, CalendarIcon, ListIcon } from './Icons';
@@ -13,9 +15,12 @@ interface AdminDashboardProps {
   logs: RequestLog[];
   items: ConsumableItem[];
   lines: string[];
+  equipmentCodes: string[];
   onAddItem: (item: ConsumableItem) => string | null;
   onAddLine: (line: string) => string | null;
   onDeleteLine: (line: string) => void;
+  onAddEquipmentCode: (code: string) => string | null;
+  onDeleteEquipmentCode: (code: string) => void;
   onDeleteLog: (logId: string) => void;
   onUpdateLogQuantity: (logId: string, newQuantity: number) => void;
   onPasswordChange: (oldPass: string, newPass: string) => string | null;
@@ -26,10 +31,11 @@ interface AdminDashboardProps {
 
 type AggregatedItem = {
   item: ConsumableItem;
-  desiredDeliveryDate?: string;
+  desired_delivery_date?: string;
   totalQuantity: number;
   totalCost: number;
   requestsByLine: { line: string; quantity: number }[];
+  requestsByEquipment: { code: string; quantity: number }[];
 };
 
 type AdminTab = 'aggregation' | 'trends' | 'settings' | 'history';
@@ -38,17 +44,18 @@ type AdminTab = 'aggregation' | 'trends' | 'settings' | 'history';
 const aggregateLogs = (logs: RequestLog[], masterItems: ConsumableItem[]): AggregatedItem[] => {
     const map = new Map<string, AggregatedItem>();
     logs.forEach(log => {
-      const key = `${log.itemId}_${log.desiredDeliveryDate || 'none'}`;
+      const key = `${log.item_id}_${log.desired_delivery_date || 'none'}`;
       let entry = map.get(key);
       if (!entry) {
-        const item = masterItems.find(i => i.id === log.itemId);
+        const item = masterItems.find(i => i.id === log.item_id);
         if (item) {
           entry = {
             item: item,
-            desiredDeliveryDate: log.desiredDeliveryDate,
+            desired_delivery_date: log.desired_delivery_date,
             totalQuantity: 0,
             totalCost: 0,
-            requestsByLine: []
+            requestsByLine: [],
+            requestsByEquipment: []
           };
           map.set(key, entry);
         } else {
@@ -56,24 +63,35 @@ const aggregateLogs = (logs: RequestLog[], masterItems: ConsumableItem[]): Aggre
         }
       }
       entry.totalQuantity += log.quantity;
-      entry.totalCost += log.totalCost;
+      entry.totalCost += log.total_cost;
       
+      // Aggregation by Line
       const lineRequest = entry.requestsByLine.find(r => r.line === log.line);
       if(lineRequest) {
           lineRequest.quantity += log.quantity;
       } else {
           entry.requestsByLine.push({ line: log.line, quantity: log.quantity });
       }
+
+      // Aggregation by Equipment Code
+      if (log.equipment_code) {
+        const eqRequest = entry.requestsByEquipment.find(r => r.code === log.equipment_code);
+        if(eqRequest) {
+            eqRequest.quantity += log.quantity;
+        } else {
+            entry.requestsByEquipment.push({ code: log.equipment_code, quantity: log.quantity });
+        }
+      }
     });
     return Array.from(map.values()).sort((a,b) => {
         const nameCompare = a.item.name.localeCompare(b.item.name);
         if (nameCompare !== 0) return nameCompare;
         
-        if (a.desiredDeliveryDate && b.desiredDeliveryDate) {
-            return a.desiredDeliveryDate.localeCompare(b.desiredDeliveryDate);
-        } else if (a.desiredDeliveryDate) {
+        if (a.desired_delivery_date && b.desired_delivery_date) {
+            return a.desired_delivery_date.localeCompare(b.desired_delivery_date);
+        } else if (a.desired_delivery_date) {
             return -1;
-        } else if (b.desiredDeliveryDate) {
+        } else if (b.desired_delivery_date) {
             return 1;
         }
         return 0;
@@ -104,7 +122,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = (props) => {
   });
 
   const sortedLogs = useMemo(() => {
-    return [...props.logs].sort((a, b) => b.timestamp - a.timestamp);
+    return [...props.logs].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
   }, [props.logs]);
 
   const handleEditClick = (log: RequestLog) => {
@@ -123,12 +141,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = (props) => {
       handleCancelEdit();
     }
   };
-
-  const handleDeleteClick = (logId: string, itemName: string) => {
-    if (window.confirm(`'${itemName}' 요청을 정말로 삭제하시겠습니까?`)) {
-        props.onDeleteLog(logId);
-    }
-  }
 
   const renderDesiredDate = useCallback((dateString?: string) => {
     if (!dateString) {
@@ -194,18 +206,19 @@ const AdminDashboard: React.FC<AdminDashboardProps> = (props) => {
     const dataToDownload = isWeekly ? weeklyAggregatedData : monthlyAggregatedData;
     if (dataToDownload.length === 0) return;
 
-    const headers = ['품번', '업체명', '품명', '규격', '단위', '단가', '희망 납기일', '총 필요수량', '총 금액', '요청 라인별 수량'];
-    const rows = dataToDownload.map(({item, desiredDeliveryDate, totalQuantity, totalCost, requestsByLine}) => [
+    const headers = ['품번', '업체명', '품명', '규격', '단위', '단가', '희망 납기일', '총 필요수량', '총 금액', '요청 라인별 수량', '설비코드별 수량'];
+    const rows = dataToDownload.map(({item, desired_delivery_date, totalQuantity, totalCost, requestsByLine, requestsByEquipment}) => [
         item.id,
         `"${item.supplier.replace(/"/g, '""')}"`,
         `"${item.name.replace(/"/g, '""')}"`,
         `"${item.specification.replace(/"/g, '""')}"`,
         `"${item.unit.replace(/"/g, '""')}"`,
         item.price,
-        desiredDeliveryDate || '',
+        desired_delivery_date || '',
         totalQuantity,
         totalCost,
-        `"${requestsByLine.map(r => `${r.line}(${r.quantity})`).join('; ')}"`
+        `"${requestsByLine.map(r => `${r.line}(${r.quantity})`).join('; ')}"`,
+        `"${requestsByEquipment.map(r => `${r.code}(${r.quantity})`).join('; ')}"`
     ].join(','));
     
     const csvContent = [headers.join(','), ...rows].join('\n');
@@ -241,19 +254,23 @@ const AdminDashboard: React.FC<AdminDashboardProps> = (props) => {
                     <th className="p-4 text-sm font-semibold text-slate-600 text-center">총 필요수량</th>
                     <th className="p-4 text-sm font-semibold text-slate-600 text-right">총 금액</th>
                     <th className="p-4 text-sm font-semibold text-slate-600">요청 라인별 수량</th>
+                    <th className="p-4 text-sm font-semibold text-slate-600">설비코드별 수량</th>
                 </tr>
                 </thead>
                 <tbody>
-                {data.map(({ item, desiredDeliveryDate, totalQuantity, totalCost, requestsByLine }) => (
-                    <tr key={`${item.id}-${desiredDeliveryDate || 'none'}`} className="border-b border-slate-100">
+                {data.map(({ item, desired_delivery_date, totalQuantity, totalCost, requestsByLine, requestsByEquipment }) => (
+                    <tr key={`${item.id}-${desired_delivery_date || 'none'}`} className="border-b border-slate-100">
                     <td className="p-4 font-medium text-slate-800">{item.name}</td>
                     <td className="p-4 text-slate-500">{item.id}</td>
-                    <td className="p-4 text-sm">{renderDesiredDate(desiredDeliveryDate)}</td>
+                    <td className="p-4 text-sm">{renderDesiredDate(desired_delivery_date)}</td>
                     <td className="p-4 text-right text-slate-600">{item.price.toLocaleString()}원</td>
                     <td className="p-4 text-center font-bold text-lg text-blue-600">{totalQuantity}</td>
                     <td className="p-4 text-right font-semibold text-slate-800">{totalCost.toLocaleString()}원</td>
                     <td className="p-4 text-slate-600 text-sm">
                         {requestsByLine.map(r => `${r.line} (${r.quantity}개)`).join(', ')}
+                    </td>
+                    <td className="p-4 text-slate-600 text-sm">
+                        {requestsByEquipment.length > 0 ? requestsByEquipment.map(r => `${r.code} (${r.quantity}개)`).join(', ') : '-'}
                     </td>
                     </tr>
                 ))}
@@ -321,6 +338,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = (props) => {
                     <tr>
                         <th className="p-4 text-sm font-semibold text-slate-600">요청일시</th>
                         <th className="p-4 text-sm font-semibold text-slate-600">라인</th>
+                        <th className="p-4 text-sm font-semibold text-slate-600">설비코드</th>
                         <th className="p-4 text-sm font-semibold text-slate-600">품목명</th>
                         <th className="p-4 text-sm font-semibold text-slate-600">희망 납기일</th>
                         <th className="p-4 text-sm font-semibold text-slate-600 text-center">수량</th>
@@ -333,8 +351,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = (props) => {
                         <tr key={log.id} className="border-b border-slate-100">
                             <td className="p-4 text-slate-500 text-sm whitespace-nowrap">{new Date(log.timestamp).toLocaleString('ko-KR')}</td>
                             <td className="p-4 text-slate-600 font-medium">{log.line}</td>
-                            <td className="p-4 font-medium text-slate-800">{log.itemName}</td>
-                            <td className="p-4 text-sm">{renderDesiredDate(log.desiredDeliveryDate)}</td>
+                            <td className="p-4 text-slate-600">{log.equipment_code || '-'}</td>
+                            <td className="p-4 font-medium text-slate-800">{log.item_name}</td>
+                            <td className="p-4 text-sm">{renderDesiredDate(log.desired_delivery_date)}</td>
                             <td className="p-4 text-center">
                                 {editingLogId === log.id ? (
                                     <input 
@@ -349,7 +368,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = (props) => {
                                     <span className="font-bold text-lg text-blue-600">{log.quantity}</span>
                                 )}
                             </td>
-                            <td className="p-4 text-right font-semibold text-slate-800">{log.totalCost.toLocaleString()}원</td>
+                            <td className="p-4 text-right font-semibold text-slate-800">{log.total_cost.toLocaleString()}원</td>
                             <td className="p-4 text-center">
                                 {editingLogId === log.id ? (
                                     <div className="flex justify-center items-center gap-2">
@@ -359,7 +378,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = (props) => {
                                 ) : (
                                     <div className="flex justify-center items-center gap-2">
                                         <button onClick={() => handleEditClick(log)} className="text-sm font-semibold text-slate-600 hover:bg-slate-100 px-3 py-1 rounded-md transition-colors">수정</button>
-                                        <button onClick={() => handleDeleteClick(log.id, log.itemName)} className="text-sm font-semibold text-red-600 hover:bg-red-50 px-3 py-1 rounded-md transition-colors">삭제</button>
+                                        <button 
+                                            onClick={() => {
+                                                if (window.confirm(`'${log.item_name}' 요청을 정말로 삭제하시겠습니까?`)) {
+                                                    props.onDeleteLog(log.id);
+                                                }
+                                            }}
+                                            className="text-sm font-semibold text-red-600 hover:bg-red-50 px-3 py-1 rounded-md transition-colors"
+                                        >
+                                            삭제
+                                        </button>
                                     </div>
                                 )}
                             </td>
@@ -377,7 +405,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = (props) => {
         <div>
             <h2 className="text-3xl font-bold text-slate-800">설정</h2>
             <p className="mt-2 text-slate-500">
-                애플리케이션의 소모품 목록, 라인, 관리자 비밀번호를 관리합니다.
+                애플리케이션의 소모품 목록, 라인, 설비코드, 관리자 비밀번호를 관리합니다.
             </p>
         </div>
         <MasterDataManager 
@@ -388,11 +416,18 @@ const AdminDashboard: React.FC<AdminDashboardProps> = (props) => {
         />
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             <AddItemForm onAddItem={props.onAddItem} />
-            <LineManager 
-                lines={props.lines}
-                onAddLine={props.onAddLine}
-                onDeleteLine={props.onDeleteLine}
-            />
+            <div className="space-y-8">
+                <LineManager 
+                    lines={props.lines}
+                    onAddLine={props.onAddLine}
+                    onDeleteLine={props.onDeleteLine}
+                />
+                <EquipmentCodeManager
+                    codes={props.equipmentCodes}
+                    onAddCode={props.onAddEquipmentCode}
+                    onDeleteCode={props.onDeleteEquipmentCode}
+                />
+            </div>
         </div>
         <div className="lg:max-w-[50%]">
              <PasswordManager onSave={props.onPasswordChange} />

@@ -29,7 +29,7 @@ const RequestHistory: React.FC<RequestHistoryProps> = ({ logs }) => {
     return logs.filter(log => {
         const logDate = new Date(log.timestamp);
         return logDate >= startOfWeek && logDate <= endOfWeek;
-    }).sort((a,b) => b.timestamp - a.timestamp);
+    }).sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
   }, [logs, startOfWeek, endOfWeek]);
 
   const logsByLine = useMemo(() => {
@@ -61,7 +61,7 @@ const RequestHistory: React.FC<RequestHistoryProps> = ({ logs }) => {
     return (
         <div className="space-y-6">
             {sortedLines.map(line => {
-                const totalLineCost = logsByLine[line].reduce((sum, log) => sum + log.totalCost, 0);
+                const totalLineCost = logsByLine[line].reduce((sum, log) => sum + log.total_cost, 0);
                 return (
                     <div key={line}>
                         <h3 className="flex justify-between items-baseline font-bold text-lg text-slate-700 pb-2 mb-2 border-b-2 border-slate-200">
@@ -75,13 +75,13 @@ const RequestHistory: React.FC<RequestHistoryProps> = ({ logs }) => {
                                 <li key={log.id} className="p-3 hover:bg-slate-50 rounded-md transition-colors">
                                     <div className="flex justify-between items-start">
                                     <div>
-                                        <p className="font-semibold text-slate-800">{log.itemName}</p>
+                                        <p className="font-semibold text-slate-800">{log.item_name}</p>
                                         <p className="text-sm text-slate-500">
-                                            단가: {(log.totalCost / log.quantity).toLocaleString()}원 &middot; 수량: {log.quantity}개
+                                            단가: {(log.total_cost / log.quantity).toLocaleString()}원 &middot; 수량: {log.quantity}개
                                         </p>
                                     </div>
                                     <div className="text-right flex-shrink-0">
-                                        <p className="font-semibold text-slate-800">{log.totalCost.toLocaleString()}원</p>
+                                        <p className="font-semibold text-slate-800">{log.total_cost.toLocaleString()}원</p>
                                         <p className="text-sm text-slate-500">
                                             {new Date(log.timestamp).toLocaleDateString('ko-KR')}
                                         </p>

@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import type { ConsumableItem } from '../types';
 import { SearchIcon, ChevronDownIcon, PlusIcon, MinusIcon, TrashIcon } from './Icons';
@@ -5,7 +6,8 @@ import { SearchIcon, ChevronDownIcon, PlusIcon, MinusIcon, TrashIcon } from './I
 interface RequestFormProps {
   items: ConsumableItem[];
   lines: string[];
-  onSubmit: (cart: { item: ConsumableItem; quantity: number }[], line: string, desiredDeliveryDate?: string) => void;
+  equipmentCodes: string[];
+  onSubmit: (cart: { item: ConsumableItem; quantity: number }[], line: string, equipmentCode: string, desiredDeliveryDate?: string) => void;
 }
 
 interface CartItem {
@@ -13,11 +15,12 @@ interface CartItem {
   quantity: number;
 }
 
-const RequestForm: React.FC<RequestFormProps> = ({ items, lines, onSubmit }) => {
+const RequestForm: React.FC<RequestFormProps> = ({ items, lines, equipmentCodes, onSubmit }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [cart, setCart] = useState<CartItem[]>([]);
   const [line, setLine] = useState('');
+  const [equipmentCode, setEquipmentCode] = useState('');
   const [desiredDate, setDesiredDate] = useState('');
   const [isFocused, setIsFocused] = useState(false);
 
@@ -78,9 +81,10 @@ const RequestForm: React.FC<RequestFormProps> = ({ items, lines, onSubmit }) => 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (cart.length > 0 && line) {
-      onSubmit(cart, line, desiredDate);
+      onSubmit(cart, line, equipmentCode, desiredDate);
       setCart([]);
       setLine(''); // Reset line after submission
+      setEquipmentCode(''); // Reset equipment code
       setDesiredDate(''); // Reset date after submission
     }
   };
@@ -112,7 +116,7 @@ const RequestForm: React.FC<RequestFormProps> = ({ items, lines, onSubmit }) => 
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-                <label htmlFor="line" className="block text-sm font-medium text-slate-600 mb-2">1. 요청 라인 선택</label>
+                <label htmlFor="line" className="block text-sm font-medium text-slate-600 mb-2">1. 요청 라인 선택 (필수)</label>
                 <div className="relative">
                 <select
                     id="line"
@@ -120,7 +124,7 @@ const RequestForm: React.FC<RequestFormProps> = ({ items, lines, onSubmit }) => 
                     onChange={(e) => setLine(e.target.value)}
                     className="w-full appearance-none p-2.5 border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors pr-8"
                 >
-                    <option value="">-- 먼저 라인을 선택해주세요 --</option>
+                    <option value="">-- 라인을 선택해주세요 --</option>
                     {lines.map(l => <option key={l} value={l}>{l}</option>)}
                 </select>
                 <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
@@ -128,8 +132,27 @@ const RequestForm: React.FC<RequestFormProps> = ({ items, lines, onSubmit }) => 
                 </div>
                 </div>
             </div>
+            
             <div>
-                <label htmlFor="desired-date" className="block text-sm font-medium text-slate-600 mb-2">희망 납기일 (선택)</label>
+                <label htmlFor="equipmentCode" className="block text-sm font-medium text-slate-600 mb-2">2. 설비코드 선택 (선택)</label>
+                <div className="relative">
+                <select
+                    id="equipmentCode"
+                    value={equipmentCode}
+                    onChange={(e) => setEquipmentCode(e.target.value)}
+                    className="w-full appearance-none p-2.5 border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors pr-8"
+                >
+                    <option value="">-- 설비코드 선택 (선택사항) --</option>
+                    {equipmentCodes.map(code => <option key={code} value={code}>{code}</option>)}
+                </select>
+                <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+                    <ChevronDownIcon />
+                </div>
+                </div>
+            </div>
+
+            <div className="md:col-span-2">
+                <label htmlFor="desired-date" className="block text-sm font-medium text-slate-600 mb-2">3. 희망 납기일 (선택)</label>
                 <input
                     type="date"
                     id="desired-date"
@@ -142,7 +165,7 @@ const RequestForm: React.FC<RequestFormProps> = ({ items, lines, onSubmit }) => 
         
         <div className={`transition-opacity ${!line ? 'opacity-50' : 'opacity-100'}`}>
           <div className="relative">
-            <label htmlFor="item-search" className="block text-sm font-medium text-slate-600 mb-2">2. 품목 검색</label>
+            <label htmlFor="item-search" className="block text-sm font-medium text-slate-600 mb-2">4. 품목 검색</label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <SearchIcon />

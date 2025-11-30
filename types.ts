@@ -1,3 +1,4 @@
+
 export interface ConsumableItem {
   id: string; // 품번
   supplier: string; // 업체명
@@ -9,12 +10,13 @@ export interface ConsumableItem {
 
 export interface RequestLog {
   id: string; 
-  requesterId: string;
+  requester_id: string;
   line: string;
-  itemId: string;
-  itemName: string; 
+  equipment_code?: string; // 설비코드 (Optional)
+  item_id: string;
+  item_name: string; 
   quantity: number;
-  totalCost: number;
-  timestamp: number;
-  desiredDeliveryDate?: string;
+  total_cost: number;
+  timestamp: string; // Changed from number to string for timestamptz
+  desired_delivery_date?: string;
 }
